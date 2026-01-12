@@ -35,8 +35,10 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, status: ConnectionStatus.CONNECTING }));
 
     try {
+      // Create AI instance using the standard injected key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
+      // Initialize Audio Contexts on user interaction
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       audioCtxRef.current = audioCtx;
@@ -112,7 +114,7 @@ const App: React.FC = () => {
               setState(prev => ({ ...prev, isReceiving: false }));
             }
           },
-          onerror: (e) => {
+          onerror: (e: any) => {
             console.error('Radio Error:', e);
             setState(prev => ({ ...prev, status: ConnectionStatus.ERROR }));
           },
@@ -123,7 +125,7 @@ const App: React.FC = () => {
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: `You are a radio dispatcher on frequency ${state.frequency} MHz. Keep your responses brief and professional.`,
+          systemInstruction: `You are a radio dispatcher on frequency ${state.frequency} MHz. Respond like a professional radio operator. Use 'Roger', 'Over', and callsigns. Keep responses very brief.`,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Fenrir' } }
           },
@@ -160,7 +162,7 @@ const App: React.FC = () => {
     if (sessionRef.current) {
       sessionRef.current.close();
       sessionRef.current = null;
-      setTimeout(initSession, 300);
+      // Re-init happens on state change if desired, or manually via power toggle
     }
   };
 
@@ -170,6 +172,7 @@ const App: React.FC = () => {
     } else {
       sessionRef.current?.close();
       sessionRef.current = null;
+      setState(prev => ({ ...prev, status: ConnectionStatus.DISCONNECTED, isTransmitting: false, isReceiving: false }));
     }
   };
 
