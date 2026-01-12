@@ -10,29 +10,48 @@
       @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
       body {
         font-family: 'JetBrains+Mono', monospace;
-        background-color: #0a0a0a;
+        background-color: #0f1115;
         color: #e0e0e0;
         overflow: hidden;
       }
-      .lcd-glow {
-        text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+      .lcd-glow-active {
+        text-shadow: 0 0 15px rgba(74, 222, 128, 0.6);
+        background-color: rgba(20, 83, 45, 0.4);
       }
-      .knob-shadow {
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 2px 4px rgba(255,255,255,0.1);
+      .lcd-glow-off {
+        background-color: rgba(39, 39, 42, 0.5);
+      }
+      .knob-3d {
+        background: linear-gradient(145deg, #3f3f46, #18181b);
+        box-shadow: 4px 4px 8px #09090b, -1px -1px 2px #52525b;
+      }
+      .btn-tactical {
+        background: linear-gradient(145deg, #27272a, #09090b);
+        box-shadow: 3px 3px 6px #09090b, -1px -1px 2px #3f3f46;
+      }
+      .btn-tactical:active {
+        box-shadow: inset 2px 2px 5px #000;
+        transform: translateY(1px);
+      }
+      .ptt-active {
+        background: radial-gradient(circle, #ef4444 0%, #991b1b 100%);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3"
-  }
-}
-</script>
-</head>
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "react": "https://esm.sh/react@^19.2.3"
+      }
+    }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
+    <!-- Explicitly load the application entry point -->
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>

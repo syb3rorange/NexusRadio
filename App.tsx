@@ -15,8 +15,8 @@ const App: React.FC = () => {
     isTransmitting: false,
     isReceiving: false,
     status: ConnectionStatus.DISCONNECTED,
-    volume: 80,
-    squelch: 20
+    volume: 85,
+    squelch: 15
   });
 
   const [transcription, setTranscription] = useState<string[]>([]);
@@ -51,14 +51,11 @@ const App: React.FC = () => {
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         callbacks: {
           onopen: () => {
-            console.log('Radio connection established');
             setState(prev => ({ ...prev, status: ConnectionStatus.CONNECTED }));
             
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
-              
-              // Only transmit if we are in Open Mic OR if PTT button is down
-              const shouldTransmit = state.mode === RadioMode.OPEN || isButtonDownRef.current;
+              const shouldTransmit = isButtonDownRef.current || (state.mode === RadioMode.OPEN);
               
               if (shouldTransmit && sessionRef.current) {
                 const pcmBlob = createBlob(inputData);
@@ -73,7 +70,6 @@ const App: React.FC = () => {
             scriptProcessor.connect(audioCtx.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
-            // Handle Audio output
             const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (audioData) {
               setState(prev => ({ ...prev, isReceiving: true }));
@@ -100,17 +96,15 @@ const App: React.FC = () => {
               sourcesRef.current.add(sourceNode);
             }
 
-            // Handle Transcriptions
             if (message.serverContent?.outputTranscription) {
               const text = message.serverContent.outputTranscription.text;
-              setTranscription(prev => [...prev.slice(-4), `RECV: ${text}`]);
+              setTranscription(prev => [...prev.slice(-3), `RECV: ${text}`]);
             }
             if (message.serverContent?.inputTranscription) {
               const text = message.serverContent.inputTranscription.text;
-              setTranscription(prev => [...prev.slice(-4), `SENT: ${text}`]);
+              setTranscription(prev => [...prev.slice(-3), `SENT: ${text}`]);
             }
 
-            // Interruptions
             if (message.serverContent?.interrupted) {
               sourcesRef.current.forEach(s => s.stop());
               sourcesRef.current.clear();
@@ -123,7 +117,6 @@ const App: React.FC = () => {
             setState(prev => ({ ...prev, status: ConnectionStatus.ERROR }));
           },
           onclose: () => {
-            console.log('Radio offline');
             setState(prev => ({ ...prev, status: ConnectionStatus.DISCONNECTED }));
             sessionRef.current = null;
           }
@@ -131,8 +124,7 @@ const App: React.FC = () => {
         config: {
           responseModalities: [Modality.AUDIO],
           systemInstruction: `You are a radio dispatcher on frequency ${state.frequency} MHz. 
-          Keep your responses brief, professional, and use radio terminology (Over, Roger, Copy, Wilco).
-          You are talking to various operators in the field.`,
+          Keep your responses brief, professional, and use radio terminology (Over, Roger, Copy, Wilco).`,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Fenrir' } }
           },
@@ -148,18 +140,9 @@ const App: React.FC = () => {
     }
   }, [state.frequency, state.mode, state.volume, state.isTransmitting]);
 
-  // Clean up
-  useEffect(() => {
-    return () => {
-      if (sessionRef.current) sessionRef.current.close();
-      if (audioCtxRef.current) audioCtxRef.current.close();
-      if (outputCtxRef.current) outputCtxRef.current.close();
-    };
-  }, []);
-
   const handlePttDown = () => {
     isButtonDownRef.current = true;
-    if (state.mode === RadioMode.PTT) {
+    if (state.mode === RadioMode.PTT && state.status === ConnectionStatus.CONNECTED) {
       setState(prev => ({ ...prev, isTransmitting: true }));
     }
   };
@@ -175,36 +158,55 @@ const App: React.FC = () => {
     const currentIndex = FREQUENCIES.indexOf(state.frequency);
     const nextIndex = (currentIndex + 1) % FREQUENCIES.length;
     setState(prev => ({ ...prev, frequency: FREQUENCIES[nextIndex] }));
-    // Force reconnect with new frequency/instruction
     if (sessionRef.current) {
       sessionRef.current.close();
       sessionRef.current = null;
-      setTimeout(initSession, 500);
+      setTimeout(initSession, 300);
+    }
+  };
+
+  const handlePowerToggle = () => {
+    if (state.status === ConnectionStatus.DISCONNECTED || state.status === ConnectionStatus.ERROR) {
+      initSession();
+    } else {
+      sessionRef.current?.close();
+      sessionRef.current = null;
+      setState(prev => ({ ...prev, status: ConnectionStatus.DISCONNECTED, isTransmitting: false, isReceiving: false }));
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4 select-none">
-      <div className="relative bg-zinc-900 border-4 border-zinc-800 rounded-[3rem] p-8 w-full max-w-md shadow-2xl overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#0a0c10] p-4 select-none">
+      {/* Radio Housing */}
+      <div className="relative bg-zinc-800 border-[6px] border-zinc-900 rounded-[3.5rem] p-8 w-full max-w-lg shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] overflow-visible">
         
-        {/* Antenna Aesthetic */}
-        <div className="absolute top-0 right-12 w-4 h-24 bg-zinc-800 -translate-y-16 rounded-full border-t-2 border-zinc-700" />
+        {/* Antenna */}
+        <div className="absolute top-0 right-16 w-5 h-32 bg-zinc-900 -translate-y-24 rounded-t-xl border-t-4 border-zinc-700 shadow-xl" />
 
         <div className="flex flex-col gap-8">
-          {/* Header */}
-          <div className="flex justify-between items-center px-4">
-            <h1 className="text-zinc-500 font-bold tracking-widest text-xs uppercase">VoxWave 2.5 Digital</h1>
-            <div className="flex gap-2">
-              <div className={`w-3 h-3 rounded-full shadow-lg ${state.isTransmitting ? 'bg-red-500 animate-pulse' : 'bg-red-900'}`} title="TX" />
-              <div className={`w-3 h-3 rounded-full shadow-lg ${state.isReceiving ? 'bg-green-500 animate-pulse' : 'bg-green-900'}`} title="RX" />
+          {/* Top Plate */}
+          <div className="flex justify-between items-center px-4 border-b border-zinc-700 pb-4">
+            <div className="flex flex-col">
+              <h1 className="text-zinc-400 font-bold tracking-widest text-sm uppercase leading-none">VoxWave</h1>
+              <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">AI-POWERED FREQUENCY HOPS</span>
+            </div>
+            <div className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <span className="text-[8px] text-zinc-500 font-bold mb-1">TX</span>
+                <div className={`w-3 h-3 rounded-full shadow-[0_0_8px] transition-all duration-200 ${state.isTransmitting ? 'bg-red-500 shadow-red-500/50 scale-110' : 'bg-red-950 shadow-transparent'}`} />
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-[8px] text-zinc-500 font-bold mb-1">RX</span>
+                <div className={`w-3 h-3 rounded-full shadow-[0_0_8px] transition-all duration-200 ${state.isReceiving ? 'bg-green-500 shadow-green-500/50 scale-110' : 'bg-green-950 shadow-transparent'}`} />
+              </div>
             </div>
           </div>
 
-          {/* Main LCD */}
+          {/* Main LCD Display */}
           <RadioDisplay state={state} transcription={transcription} />
 
-          {/* Controls Section */}
-          <div className="bg-zinc-800/50 p-6 rounded-3xl border border-zinc-700 shadow-inner flex flex-col gap-6">
+          {/* Controls Plate */}
+          <div className="bg-zinc-900/40 p-8 rounded-[2.5rem] border border-zinc-700/50 shadow-inner">
             <Controls 
               state={state} 
               onPttDown={handlePttDown}
@@ -212,12 +214,14 @@ const App: React.FC = () => {
               onModeToggle={() => setState(prev => ({ ...prev, mode: prev.mode === RadioMode.PTT ? RadioMode.OPEN : RadioMode.PTT }))}
               onFreqChange={cycleFrequency}
               onVolumeChange={(v) => setState(prev => ({ ...prev, volume: v }))}
-              onPowerToggle={state.status === ConnectionStatus.DISCONNECTED ? initSession : () => { sessionRef.current?.close(); sessionRef.current = null; }}
+              onPowerToggle={handlePowerToggle}
             />
           </div>
           
-          <div className="text-center">
-            <p className="text-[10px] text-zinc-600 uppercase tracking-tighter">Secure AI Frequency Hopping Tech</p>
+          <div className="flex justify-center items-center gap-2 opacity-30">
+             <div className="h-1 w-12 bg-zinc-600 rounded-full" />
+             <span className="text-[8px] text-zinc-400 font-bold uppercase">Field Unit #0412</span>
+             <div className="h-1 w-12 bg-zinc-600 rounded-full" />
           </div>
         </div>
       </div>
