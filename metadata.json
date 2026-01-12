@@ -1,0 +1,7 @@
+{
+  "name": "VoxWave AI Radio",
+  "description": "A professional-grade virtual radio console with AI-powered communication. Features Push-to-Talk (PTT) and Open Mic modes, real-time audio visualization, and a smart AI dispatcher on every frequency.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
