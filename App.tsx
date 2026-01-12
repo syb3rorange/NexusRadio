@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
-import { RadioMode, ConnectionStatus, RadioState } from './types';
-import { createBlob, decode, decodeAudioData } from './utils/audio';
-import RadioDisplay from './components/RadioDisplay';
-import Controls from './components/Controls';
+import { RadioMode, ConnectionStatus, RadioState } from './types.ts';
+import { createBlob, decode, decodeAudioData } from './utils/audio.ts';
+import RadioDisplay from './components/RadioDisplay.tsx';
+import Controls from './components/Controls.tsx';
 
 const FREQUENCIES = [144.100, 144.200, 144.300, 144.400, 144.500];
 
@@ -117,14 +117,13 @@ const App: React.FC = () => {
             setState(prev => ({ ...prev, status: ConnectionStatus.ERROR }));
           },
           onclose: () => {
-            setState(prev => ({ ...prev, status: ConnectionStatus.DISCONNECTED }));
+            setState(prev => ({ ...prev, status: ConnectionStatus.DISCONNECTED, isTransmitting: false, isReceiving: false }));
             sessionRef.current = null;
           }
         },
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: `You are a radio dispatcher on frequency ${state.frequency} MHz. 
-          Keep your responses brief, professional, and use radio terminology (Over, Roger, Copy, Wilco).`,
+          systemInstruction: `You are a radio dispatcher on frequency ${state.frequency} MHz. Keep your responses brief and professional.`,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Fenrir' } }
           },
@@ -171,42 +170,32 @@ const App: React.FC = () => {
     } else {
       sessionRef.current?.close();
       sessionRef.current = null;
-      setState(prev => ({ ...prev, status: ConnectionStatus.DISCONNECTED, isTransmitting: false, isReceiving: false }));
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0c10] p-4 select-none">
-      {/* Radio Housing */}
-      <div className="relative bg-zinc-800 border-[6px] border-zinc-900 rounded-[3.5rem] p-8 w-full max-w-lg shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)] overflow-visible">
-        
-        {/* Antenna */}
+      <div className="relative bg-zinc-800 border-[6px] border-zinc-900 rounded-[3.5rem] p-8 w-full max-w-lg shadow-[0_50px_100px_-20px_rgba(0,0,0,0.8)]">
         <div className="absolute top-0 right-16 w-5 h-32 bg-zinc-900 -translate-y-24 rounded-t-xl border-t-4 border-zinc-700 shadow-xl" />
-
         <div className="flex flex-col gap-8">
-          {/* Top Plate */}
           <div className="flex justify-between items-center px-4 border-b border-zinc-700 pb-4">
             <div className="flex flex-col">
               <h1 className="text-zinc-400 font-bold tracking-widest text-sm uppercase leading-none">VoxWave</h1>
-              <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">AI-POWERED FREQUENCY HOPS</span>
+              <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-tighter">AI DIGITAL RADIO</span>
             </div>
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <span className="text-[8px] text-zinc-500 font-bold mb-1">TX</span>
-                <div className={`w-3 h-3 rounded-full shadow-[0_0_8px] transition-all duration-200 ${state.isTransmitting ? 'bg-red-500 shadow-red-500/50 scale-110' : 'bg-red-950 shadow-transparent'}`} />
+                <div className={`w-3 h-3 rounded-full transition-all duration-200 ${state.isTransmitting ? 'bg-red-500 shadow-[0_0_8px_red]' : 'bg-red-950'}`} />
               </div>
               <div className="flex flex-col items-center">
                 <span className="text-[8px] text-zinc-500 font-bold mb-1">RX</span>
-                <div className={`w-3 h-3 rounded-full shadow-[0_0_8px] transition-all duration-200 ${state.isReceiving ? 'bg-green-500 shadow-green-500/50 scale-110' : 'bg-green-950 shadow-transparent'}`} />
+                <div className={`w-3 h-3 rounded-full transition-all duration-200 ${state.isReceiving ? 'bg-green-500 shadow-[0_0_8px_green]' : 'bg-green-950'}`} />
               </div>
             </div>
           </div>
-
-          {/* Main LCD Display */}
           <RadioDisplay state={state} transcription={transcription} />
-
-          {/* Controls Plate */}
-          <div className="bg-zinc-900/40 p-8 rounded-[2.5rem] border border-zinc-700/50 shadow-inner">
+          <div className="bg-zinc-900/40 p-8 rounded-[2.5rem] border border-zinc-700/50">
             <Controls 
               state={state} 
               onPttDown={handlePttDown}
@@ -216,12 +205,6 @@ const App: React.FC = () => {
               onVolumeChange={(v) => setState(prev => ({ ...prev, volume: v }))}
               onPowerToggle={handlePowerToggle}
             />
-          </div>
-          
-          <div className="flex justify-center items-center gap-2 opacity-30">
-             <div className="h-1 w-12 bg-zinc-600 rounded-full" />
-             <span className="text-[8px] text-zinc-400 font-bold uppercase">Field Unit #0412</span>
-             <div className="h-1 w-12 bg-zinc-600 rounded-full" />
           </div>
         </div>
       </div>
